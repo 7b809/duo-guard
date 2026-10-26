@@ -1,0 +1,10 @@
+# requirements.txt
+fastapi
+uvicorn[standard]
+pymongo
+python-dotenv
+jinja2
+python-multipart
+itsdangerous
+pyotp
+qrcode[pil]

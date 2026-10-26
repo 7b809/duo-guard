@@ -1,0 +1,18 @@
+# .gitignore
+__pycache__/
+*.py[cod]
+.env
+.venv/
+venv/
+.env.*
+!.env.example
+.idea/
+.vscode/
+.DS_Store
+data
+temp
+output
+combined_output.txt
+
+myenv
+.myenv

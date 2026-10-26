@@ -1,0 +1,135 @@
+/* static/css/style.css */
+
+:root {
+  --brand-primary: #4f46e5;
+  --brand-secondary: #0ea5e9;
+  --page-bg: #f4f6fb;
+}
+
+body {
+  background-color: var(--page-bg);
+  color: #1e293b;
+  font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ---------- Navbar ---------- */
+.app-navbar {
+  background: linear-gradient(90deg, #4f46e5 0%, #0ea5e9 100%);
+  box-shadow: 0 6px 22px rgba(15, 23, 42, 0.14);
+}
+
+.app-navbar .navbar-brand {
+  letter-spacing: 0.3px;
+}
+
+.app-navbar .nav-link {
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+}
+
+.app-navbar .nav-link:hover,
+.app-navbar .nav-link:focus {
+  color: #ffffff;
+}
+
+/* ---------- Hero ---------- */
+.hero-panel {
+  background: linear-gradient(135deg, #4338ca 0%, #4f46e5 45%, #0ea5e9 100%);
+  box-shadow: 0 22px 48px rgba(79, 70, 229, 0.28);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 1.25rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #ffffff;
+}
+
+.code-display {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.35rem;
+}
+
+/* ---------- Cards & forms ---------- */
+.card {
+  border-radius: 1rem;
+}
+
+.auth-card {
+  max-width: 460px;
+  margin: 0 auto;
+}
+
+.icon-circle {
+  width: 56px;
+  height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.14), rgba(14, 165, 233, 0.14));
+  color: var(--brand-primary);
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.9rem;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.14), rgba(14, 165, 233, 0.14));
+  color: var(--brand-primary);
+  font-size: 1.25rem;
+}
+
+.code-input {
+  letter-spacing: 0.6rem;
+  font-weight: 700;
+  font-size: 1.35rem;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+  border: none;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background: linear-gradient(135deg, #4338ca, #0284c7);
+  border: none;
+}
+
+/* ---------- QR ---------- */
+.qr-wrapper {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.qr-wrapper img {
+  image-rendering: pixelated;
+  border-radius: 0.5rem;
+}
+
+/* ---------- Footer ---------- */
+.footer-bar {
+  background: #ffffff;
+}
+
+/* ---------- Responsive tweaks ---------- */
+@media (max-width: 575.98px) {
+  .code-display {
+    font-size: 1.6rem;
+    letter-spacing: 0.25rem;
+  }
+  .code-input {
+    font-size: 1.15rem;
+    letter-spacing: 0.45rem;
+  }
+}
