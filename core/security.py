@@ -4,12 +4,14 @@ import hashlib
 import hmac
 import io
 import os
+import secrets
 from urllib.parse import parse_qs, unquote, urlparse
 
 import pyotp
 import qrcode
 
 PBKDF2_ITERATIONS = 260_000
+API_KEY_PREFIX = "dg_"
 
 ALGO_MAP = {
     "SHA1": hashlib.sha1,
@@ -104,3 +106,15 @@ def parse_otpauth_uri(uri: str) -> dict | None:
         "period": period,
         "algorithm": algorithm,
     }
+
+
+# ---------- API key helpers ----------
+
+def generate_api_key() -> str:
+    """Return a fresh, human-recognisable API key (shown to the user once)."""
+    return API_KEY_PREFIX + secrets.token_urlsafe(32)
+
+
+def hash_api_key(api_key: str) -> str:
+    """Fast lookup hash for stored API keys (high-entropy, PBKDF2 not needed)."""
+    return hashlib.sha256((api_key or "").strip().encode("utf-8")).hexdigest()

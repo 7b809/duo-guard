@@ -39,5 +39,11 @@ async def dashboard(request: Request):
     return render(
         request,
         "dashboard.html",
-        {"user": user, "entries": entries},
+        {
+            "user": user,
+            "entries": entries,
+            "has_api_key": bool(user.get("api_key_hash")),
+            "api_key_prefix": user.get("api_key_prefix") or "",
+            "api_key_created_at": user.get("api_key_created_at"),
+        },
     )

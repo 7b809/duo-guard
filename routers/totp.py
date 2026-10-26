@@ -7,11 +7,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from core.db import totp_entries_collection
-from core.security import (
-    is_valid_secret,
-    make_totp,
-    parse_otpauth_uri,
-)
+from core.security import is_valid_secret, make_totp, parse_otpauth_uri
 from core.templating import flash, render
 
 router = APIRouter()
@@ -107,6 +103,7 @@ async def delete_entry(request: Request, entry_id: str):
 
 @router.get("/api/totp/codes")
 async def get_codes(request: Request):
+    """Session-authenticated codes feed used by the dashboard JS."""
     email = _current_user_email(request)
     if not email:
         return JSONResponse({"error": "unauthorized"}, status_code=401)

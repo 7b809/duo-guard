@@ -18,6 +18,8 @@ def render(request: Request, template_name: str, context: dict | None = None):
         "app_name": settings.APP_NAME,
         "user_email": request.session.get("user_email"),
         "flashes": request.session.pop("flashes", []),
+        # A fresh API key is shown exactly once (right after regeneration).
+        "new_api_key": request.session.pop("new_api_key", None),
     }
     if context:
         ctx.update(context)
