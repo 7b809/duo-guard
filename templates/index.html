@@ -1,26 +1,29 @@
 <!-- templates/index.html -->
 {% extends "base.html" %}
 
-{% block title %}{{ app_name }} &mdash; Secure Two-Factor Authentication{% endblock %}
+{% block title %}{{ app_name }} &mdash; Personal TOTP Authenticator{% endblock %}
 
 {% block content %}
 <section class="hero-panel rounded-4 p-4 p-lg-5 mb-5">
   <div class="row align-items-center g-5">
     <div class="col-lg-7">
       <span class="badge rounded-pill bg-white text-primary fw-semibold px-3 py-2 mb-3">
-        <i class="bi bi-shield-check me-1"></i> TOTP Authenticator
+        <i class="bi bi-qr-code-scan me-1"></i> Scan &middot; Store &middot; Generate
       </span>
       <h1 class="display-5 fw-bold text-white mb-3">
-        Add a second layer of security to your account
+        Your authenticator codes, right in the browser
       </h1>
       <p class="lead text-white-50 mb-4">
-        Register, scan a QR code with Google Authenticator, Authy or Microsoft Authenticator,
-        then sign in using rotating 6-digit codes. No SMS, no shared secrets over the wire.
+        Scan any <code class="text-white">otpauth://</code> QR code with your camera, and see
+        every 6-digit code you need in one place. Live countdowns, no app install, no SMS.
       </p>
       <div class="d-flex flex-wrap gap-3">
         {% if user_email %}
           <a href="/dashboard" class="btn btn-light btn-lg px-4 fw-semibold">
-            <i class="bi bi-speedometer2 me-2"></i>Go to dashboard
+            <i class="bi bi-grid-3x3-gap me-2"></i>View my codes
+          </a>
+          <a href="/totp/add" class="btn btn-outline-light btn-lg px-4">
+            <i class="bi bi-plus-circle me-2"></i>Add authenticator
           </a>
         {% else %}
           <a href="/register" class="btn btn-light btn-lg px-4 fw-semibold">
@@ -32,7 +35,7 @@
     </div>
     <div class="col-lg-5">
       <div class="glass-card p-4 text-center">
-        <p class="text-white-50 text-uppercase small fw-semibold mb-2">Current code</p>
+        <p class="text-white-50 text-uppercase small fw-semibold mb-2">Example live code</p>
         <div class="code-display mb-2">418 902</div>
         <p class="small text-white-50 mb-4">
           <i class="bi bi-arrow-repeat me-1"></i>Refreshes every 30 seconds
@@ -42,7 +45,7 @@
         </div>
         <hr class="border-light opacity-25 my-4">
         <p class="small text-white-50 mb-0">
-          <i class="bi bi-phone me-1"></i>Works with any TOTP-compatible app
+          <i class="bi bi-camera-video me-1"></i>Uses your browser camera &mdash; no app needed
         </p>
       </div>
     </div>
@@ -53,21 +56,10 @@
   <div class="col-md-4">
     <div class="card border-0 shadow-sm rounded-4 h-100">
       <div class="card-body p-4">
-        <div class="feature-icon mb-3"><i class="bi bi-qr-code-scan"></i></div>
-        <h2 class="h6 fw-bold mb-2">1. Scan the QR code</h2>
+        <div class="feature-icon mb-3"><i class="bi bi-camera-video"></i></div>
+        <h2 class="h6 fw-bold mb-2">1. Scan with your camera</h2>
         <p class="text-secondary small mb-0">
-          Open your authenticator app and scan the generated QR code to link your account.
-        </p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card border-0 shadow-sm rounded-4 h-100">
-      <div class="card-body p-4">
-        <div class="feature-icon mb-3"><i class="bi bi-check2-circle"></i></div>
-        <h2 class="h6 fw-bold mb-2">2. Verify once</h2>
-        <p class="text-secondary small mb-0">
-          Enter the 6-digit code shown in your app to confirm the device is paired correctly.
+          Point the built-in scanner at the QR code shown by any service you want to protect.
         </p>
       </div>
     </div>
@@ -76,9 +68,20 @@
     <div class="card border-0 shadow-sm rounded-4 h-100">
       <div class="card-body p-4">
         <div class="feature-icon mb-3"><i class="bi bi-shield-lock"></i></div>
-        <h2 class="h6 fw-bold mb-2">3. Sign in safely</h2>
+        <h2 class="h6 fw-bold mb-2">2. Stored securely</h2>
         <p class="text-secondary small mb-0">
-          Every future sign-in asks for a fresh code, so a stolen password is not enough.
+          Secrets are kept server-side and only ever exposed as short-lived 6-digit codes.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm rounded-4 h-100">
+      <div class="card-body p-4">
+        <div class="feature-icon mb-3"><i class="bi bi-arrow-repeat"></i></div>
+        <h2 class="h6 fw-bold mb-2">3. Live, always-fresh codes</h2>
+        <p class="text-secondary small mb-0">
+          Every code ticks down in real time and refreshes automatically every 30 seconds.
         </p>
       </div>
     </div>

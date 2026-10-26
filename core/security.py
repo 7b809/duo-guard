@@ -4,11 +4,18 @@ import hashlib
 import hmac
 import io
 import os
+from urllib.parse import parse_qs, unquote, urlparse
 
 import pyotp
 import qrcode
 
 PBKDF2_ITERATIONS = 260_000
+
+ALGO_MAP = {
+    "SHA1": hashlib.sha1,
+    "SHA256": hashlib.sha256,
+    "SHA512": hashlib.sha512,
+}
 
 
 def hash_password(password: str) -> str:
@@ -32,18 +39,19 @@ def verify_password(password: str, stored_hash: str) -> bool:
     return hmac.compare_digest(candidate.hex(), digest_hex)
 
 
-def generate_totp_secret() -> str:
-    return pyotp.random_base32()
+def make_totp(secret: str, digits: int = 6, period: int = 30, algorithm: str = "SHA1"):
+    digest = ALGO_MAP.get((algorithm or "SHA1").upper(), hashlib.sha1)
+    return pyotp.TOTP(secret, digits=int(digits), interval=int(period), digest=digest)
 
 
-def get_totp_uri(secret: str, email: str, issuer: str) -> str:
-    return pyotp.TOTP(secret).provisioning_uri(name=email, issuer_name=issuer)
-
-
-def verify_totp_code(secret: str, code: str) -> bool:
-    if not secret or not code:
+def is_valid_secret(secret: str) -> bool:
+    if not secret:
         return False
-    return pyotp.TOTP(secret).verify(code, valid_window=1)
+    try:
+        pyotp.TOTP(secret).now()
+        return True
+    except Exception:
+        return False
 
 
 def generate_qr_base64(uri: str) -> str:
@@ -51,3 +59,48 @@ def generate_qr_base64(uri: str) -> str:
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+
+def parse_otpauth_uri(uri: str) -> dict | None:
+    """Parse a standard otpauth://totp/... URI into a TOTP entry dict."""
+    try:
+        parsed = urlparse((uri or "").strip())
+    except Exception:
+        return None
+
+    if parsed.scheme.lower() != "otpauth" or parsed.netloc.lower() != "totp":
+        return None
+
+    params = parse_qs(parsed.query)
+    secret = (params.get("secret") or [None])[0]
+    if not secret:
+        return None
+
+    issuer = (params.get("issuer") or [None])[0] or ""
+    label = unquote(parsed.path.lstrip("/"))
+    account = label
+
+    if ":" in label:
+        left, right = label.split(":", 1)
+        issuer = issuer or left.strip()
+        account = right.strip()
+
+    try:
+        digits = int((params.get("digits") or ["6"])[0])
+        period = int((params.get("period") or ["30"])[0])
+    except ValueError:
+        digits, period = 6, 30
+
+    algorithm = ((params.get("algorithm") or ["SHA1"])[0] or "SHA1").upper()
+
+    if not is_valid_secret(secret):
+        return None
+
+    return {
+        "secret": secret,
+        "issuer": issuer.strip(),
+        "account": account.strip(),
+        "digits": digits,
+        "period": period,
+        "algorithm": algorithm,
+    }

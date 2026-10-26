@@ -3,7 +3,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
 
 from core.db import users_collection
-from core.security import hash_password, verify_password, verify_totp_code
+from core.security import hash_password, verify_password
 from core.templating import flash, render
 
 router = APIRouter()
@@ -45,8 +45,6 @@ async def register(
         {
             "email": email,
             "password_hash": hash_password(password),
-            "totp_secret": None,
-            "totp_enabled": False,
         }
     )
 
@@ -73,10 +71,6 @@ async def login(
         flash(request, "Invalid email or password.", "danger")
         return RedirectResponse("/login", status_code=303)
 
-    if user.get("totp_enabled") and user.get("totp_secret"):
-        request.session["pending_2fa_email"] = user["email"]
-        return RedirectResponse("/verify", status_code=303)
-
     request.session["user_email"] = user["email"]
     flash(request, "Welcome back!", "success")
     return RedirectResponse("/dashboard", status_code=303)
@@ -87,32 +81,3 @@ async def logout(request: Request):
     request.session.clear()
     flash(request, "You have been signed out.", "info")
     return RedirectResponse("/login", status_code=303)
-
-
-@router.get("/verify")
-async def verify_page(request: Request):
-    if not request.session.get("pending_2fa_email"):
-        return RedirectResponse("/login", status_code=303)
-    return render(request, "verify.html")
-
-
-@router.post("/verify")
-async def verify(request: Request, code: str = Form(...)):
-    email = request.session.get("pending_2fa_email")
-    if not email:
-        return RedirectResponse("/login", status_code=303)
-
-    user = users_collection.find_one({"email": email})
-    if not user or not user.get("totp_secret"):
-        request.session.pop("pending_2fa_email", None)
-        flash(request, "Something went wrong. Please sign in again.", "danger")
-        return RedirectResponse("/login", status_code=303)
-
-    if verify_totp_code(user["totp_secret"], code.strip()):
-        request.session.pop("pending_2fa_email", None)
-        request.session["user_email"] = email
-        flash(request, "Two-factor authentication successful.", "success")
-        return RedirectResponse("/dashboard", status_code=303)
-
-    flash(request, "Invalid or expired code. Please try again.", "danger")
-    return RedirectResponse("/verify", status_code=303)

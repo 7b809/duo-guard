@@ -117,6 +117,94 @@ body {
   border-radius: 0.5rem;
 }
 
+.qr-reader-container {
+  max-width: 420px;
+  min-height: 320px;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #0f172a;
+  border: 2px dashed #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+}
+
+.qr-reader-container video {
+  border-radius: 0.75rem;
+}
+
+/* ---------- TOTP grid ---------- */
+.totp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.totp-card {
+  background: #ffffff;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  padding: 1.15rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.totp-card .totp-issuer {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.totp-card .totp-account {
+  font-size: 0.78rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.totp-code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2rem;
+  color: var(--brand-primary);
+  line-height: 1.1;
+}
+
+.totp-progress {
+  height: 5px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.totp-progress > .totp-progress-bar {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--brand-primary), var(--brand-secondary));
+  transition: width 1s linear;
+}
+
+.totp-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.totp-countdown {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- Footer ---------- */
 .footer-bar {
   background: #ffffff;
@@ -131,5 +219,9 @@ body {
   .code-input {
     font-size: 1.15rem;
     letter-spacing: 0.45rem;
+  }
+  .totp-code {
+    font-size: 1.55rem;
+    letter-spacing: 0.15rem;
   }
 }

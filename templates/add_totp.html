@@ -1,0 +1,229 @@
+<!-- templates/add_totp.html -->
+{% extends "base.html" %}
+
+{% block title %}Add authenticator &mdash; {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-body p-4 p-lg-5">
+
+        <div class="d-flex align-items-center gap-3 mb-4">
+          <div class="icon-circle"><i class="bi bi-plus-circle"></i></div>
+          <div>
+            <h1 class="h4 fw-bold mb-0">Add an authenticator</h1>
+            <p class="text-secondary small mb-0">
+              Scan a QR code with your camera, or paste the secret key manually.
+            </p>
+          </div>
+        </div>
+
+        <ul class="nav nav-pills mb-4 gap-2" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#scan-pane"
+                    type="button" role="tab" aria-selected="true">
+              <i class="bi bi-camera-video me-2"></i>Scan QR code
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#manual-pane"
+                    type="button" role="tab" aria-selected="false">
+              <i class="bi bi-keyboard me-2"></i>Enter manually
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+          <div class="tab-pane fade show active" id="scan-pane" role="tabpanel">
+            <div class="row g-4 align-items-start">
+              <div class="col-md-6">
+                <div id="qr-reader" class="qr-reader-container mb-3">
+                  <div class="text-center small px-3">
+                    <i class="bi bi-camera fs-3 d-block mb-2"></i>
+                    Camera preview will appear here
+                  </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                  <button id="startScan" type="button" class="btn btn-primary">
+                    <i class="bi bi-camera-video me-2"></i>Start camera
+                  </button>
+                  <button id="stopScan" type="button" class="btn btn-outline-secondary d-none">
+                    <i class="bi bi-stop-circle me-2"></i>Stop camera
+                  </button>
+                </div>
+                <p id="scanStatus" class="small mt-2 mb-0"></p>
+              </div>
+              <div class="col-md-6">
+                <div class="alert alert-light border small text-secondary mb-3">
+                  <i class="bi bi-info-circle me-1"></i>
+                  Point the camera at any <code>otpauth://</code> QR code &mdash; it will be
+                  detected and saved automatically.
+                </div>
+                <div class="alert alert-warning small mb-0">
+                  <i class="bi bi-shield-exclamation me-1"></i>
+                  The camera only works over <strong>HTTPS</strong> or on
+                  <code>http://localhost</code>. If you access this site via your LAN IP, use the
+                  manual entry tab instead.
+                </div>
+              </div>
+            </div>
+
+            <form id="scanForm" method="post" action="/totp/add" class="d-none">
+              <input type="hidden" name="otpauth_uri" value="">
+            </form>
+          </div>
+
+          <div class="tab-pane fade" id="manual-pane" role="tabpanel">
+            <form method="post" action="/totp/add" class="vstack gap-3">
+              <div>
+                <label class="form-label fw-semibold" for="issuer">Service name (issuer)</label>
+                <input type="text" class="form-control" id="issuer" name="issuer"
+                       placeholder="e.g. GitHub, Google, AWS" required>
+              </div>
+              <div>
+                <label class="form-label fw-semibold" for="account">Account name</label>
+                <input type="text" class="form-control" id="account" name="account"
+                       placeholder="e.g. you@example.com (optional)">
+              </div>
+              <div>
+                <label class="form-label fw-semibold" for="secret">Secret key</label>
+                <input type="text" class="form-control font-monospace" id="secret" name="secret"
+                       placeholder="Base32 secret, e.g. JBSWY3DPEHPK3PXP" required>
+                <div class="form-text small">
+                  Usually shown as <em>&ldquo;can&rsquo;t scan? enter manually&rdquo;</em> below the QR code.
+                </div>
+              </div>
+              <div class="d-flex flex-wrap gap-2 mt-2">
+                <button type="submit" class="btn btn-primary px-4">
+                  <i class="bi bi-plus-circle me-2"></i>Add authenticator
+                </button>
+                <a href="/dashboard" class="btn btn-light px-4">Cancel</a>
+              </div>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+  (function () {
+    "use strict";
+
+    var readerEl = document.getElementById("qr-reader");
+    var startBtn = document.getElementById("startScan");
+    var stopBtn = document.getElementById("stopScan");
+    var statusEl = document.getElementById("scanStatus");
+    var scanForm = document.getElementById("scanForm");
+    if (!readerEl || !startBtn || !stopBtn || !statusEl || !scanForm) return;
+
+    var qrScanner = null;
+    var handling = false;
+
+    function setStatus(text, cls) {
+      statusEl.textContent = text || "";
+      statusEl.className = "small mt-2 mb-0 " + (cls || "text-secondary");
+    }
+
+    // Browsers only allow getUserMedia() in a secure context:
+    //   - https://anything
+    //   - http://localhost / http://127.0.0.1
+    //   - file:// (some browsers)
+    // Plain http://192.168.x.x (LAN IP) is NOT a secure context.
+    var isSecure = window.isSecureContext === true;
+
+    if (!isSecure) {
+      startBtn.disabled = true;
+      startBtn.classList.add("disabled");
+      startBtn.innerHTML = '<i class="bi bi-camera-video-off me-2"></i>Camera unavailable';
+      stopBtn.classList.add("d-none");
+
+      readerEl.innerHTML =
+        '<div class="text-center small px-3 py-4 text-warning">' +
+          '<i class="bi bi-shield-exclamation fs-3 d-block mb-2"></i>' +
+          'Camera scanning is unavailable over plain HTTP on a LAN IP.' +
+          '<div class="mt-2 text-secondary">' +
+            'Switch to the <strong>Enter manually</strong> tab, or open this site via ' +
+            '<code>https://</code> or <code>http://localhost</code>.' +
+          '</div>' +
+        '</div>';
+
+      setStatus(
+        "Insecure context detected — camera disabled. Use the manual entry tab.",
+        "text-warning"
+      );
+      return; // Do not wire up scanner; the rest of the page still works.
+    }
+
+    async function stopScanner() {
+      if (qrScanner) {
+        try {
+          if (qrScanner.isScanning) await qrScanner.stop();
+          await qrScanner.clear();
+        } catch (e) { /* ignore */ }
+        qrScanner = null;
+      }
+      startBtn.classList.remove("d-none");
+      stopBtn.classList.add("d-none");
+    }
+
+    async function startScanner() {
+      if (!window.Html5Qrcode) {
+        setStatus("Scanner library failed to load. Check your internet connection.", "text-danger");
+        return;
+      }
+
+      try {
+        qrScanner = new Html5Qrcode("qr-reader", { verbose: false });
+        await qrScanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1.0 },
+          onScanSuccess,
+          function () { /* per-frame failures, ignore */ }
+        );
+        startBtn.classList.add("d-none");
+        stopBtn.classList.remove("d-none");
+        setStatus("Scanning… point the camera at the QR code.", "text-success");
+      } catch (err) {
+        qrScanner = null;
+        setStatus(
+          "Could not access the camera. Make sure it's allowed by the browser and you're on HTTPS or localhost.",
+          "text-danger"
+        );
+      }
+    }
+
+    async function onScanSuccess(text) {
+      if (handling) return;
+      if (!text || text.indexOf("otpauth://") !== 0) {
+        setStatus("That's not a TOTP QR code. Try a different one.", "text-warning");
+        return;
+      }
+      handling = true;
+      await stopScanner();
+      setStatus("QR detected! Saving authenticator…", "text-success");
+      scanForm.querySelector('input[name="otpauth_uri"]').value = text;
+      scanForm.submit();
+    }
+
+    startBtn.addEventListener("click", startScanner);
+    stopBtn.addEventListener("click", async function () {
+      await stopScanner();
+      setStatus("Camera stopped.", "text-secondary");
+    });
+
+    // Stop the camera if the user navigates away
+    window.addEventListener("beforeunload", function () {
+      if (qrScanner && qrScanner.isScanning) {
+        try { qrScanner.stop(); } catch (e) { /* ignore */ }
+      }
+    });
+  })();
+</script>
+{% endblock %}

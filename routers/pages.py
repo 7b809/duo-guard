@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 
-from core.db import users_collection
+from core.db import totp_entries_collection, users_collection
 from core.templating import render
 
 router = APIRouter()
@@ -24,4 +24,20 @@ async def dashboard(request: Request):
         request.session.clear()
         return RedirectResponse("/login", status_code=303)
 
-    return render(request, "dashboard.html", {"user": user})
+    entries_cursor = totp_entries_collection.find({"user_email": email}).sort("created_at", -1)
+    entries = []
+    for entry in entries_cursor:
+        entries.append(
+            {
+                "id": str(entry["_id"]),
+                "issuer": entry.get("issuer") or "",
+                "account": entry.get("account") or entry.get("label") or "",
+                "period": int(entry.get("period", 30)),
+            }
+        )
+
+    return render(
+        request,
+        "dashboard.html",
+        {"user": user, "entries": entries},
+    )
