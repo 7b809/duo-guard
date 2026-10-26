@@ -106,7 +106,6 @@
 
     <hr class="my-4">
 
-    {# ---------- Just-generated key: prominent, copy-able ---------- #}
     {% if new_api_key %}
       <div class="alert alert-warning border-0 rounded-4 p-3 p-md-4 mb-3">
         <div class="d-flex align-items-start gap-3 mb-3">
@@ -118,7 +117,6 @@
             </p>
           </div>
         </div>
-
         <div class="d-flex flex-column flex-sm-row gap-2">
           <input type="text"
                  class="form-control form-control-lg font-monospace flex-grow-1"
@@ -135,7 +133,6 @@
       </div>
     {% endif %}
 
-    {# ---------- Existing key: masked display ---------- #}
     {% if has_api_key %}
       <div class="row g-3 align-items-center mb-3">
         <div class="col-lg-8">
@@ -192,16 +189,110 @@
   {{ request.base_url }}api/v1/totp/&lt;entry_id&gt;/code</code></pre>
 
         <p class="mb-2 text-secondary">Fetch the first code for a given issuer:</p>
-        <pre class="bg-dark text-light rounded-3 p-3 mb-0"><code>curl -H "X-API-Key: {{ api_key_prefix }}…" \
+        <pre class="bg-dark text-light rounded-3 p-3 mb-3"><code>curl -H "X-API-Key: {{ api_key_prefix }}…" \
   {{ request.base_url }}api/v1/totp/code/by-issuer/GitHub</code></pre>
+
+        <p class="mb-2 text-secondary">Manually trigger the Upstox push:</p>
+        <pre class="bg-dark text-light rounded-3 p-3 mb-0"><code>curl -X POST -H "X-API-Key: {{ api_key_prefix }}…" \
+  {{ request.base_url }}api/v1/upstox/push</code></pre>
       </div>
     </details>
   </div>
 </div>
+
+{# ---------- Upstox daily auto-push card ---------- #}
+{% if scheduler %}
+<div class="card border-0 shadow-sm rounded-4 mt-4">
+  <div class="card-body p-4 p-lg-5">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+      <div>
+        <h2 class="h5 fw-bold mb-1">
+          <i class="bi bi-clock-history me-2 text-primary"></i>Upstox daily auto-push
+        </h2>
+        <p class="text-secondary small mb-0">
+          A scheduled job generates a fresh Upstox TOTP every day at
+          <strong>04:00 IST</strong> and pushes it to the Upstox dashboard's
+          <code>/api/login</code> endpoint.
+        </p>
+      </div>
+      <span class="badge bg-success-subtle text-success-emphasis px-3 py-2 rounded-pill">
+        <i class="bi bi-alarm me-1"></i>
+        {% if scheduler.next_run %}
+          Next: {{ scheduler.next_run.strftime('%Y-%m-%d %H:%M %Z') }}
+        {% else %}
+          Not scheduled
+        {% endif %}
+      </span>
+    </div>
+
+    <form method="post" action="/admin/run-upstox-push-form" id="runPushForm" class="mb-4">
+      <button type="submit" class="btn btn-outline-primary" id="runPushBtn">
+        <i class="bi bi-play-circle me-1"></i><span>Run now (manual test)</span>
+      </button>
+      <span class="text-secondary small ms-2">
+        Triggers the same job immediately &mdash; useful for testing.
+      </span>
+    </form>
+
+    <h3 class="h6 fw-semibold text-uppercase text-secondary mb-3">Recent pushes</h3>
+
+    {% if push_logs %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Started (UTC)</th>
+              <th>By</th>
+              <th>Status</th>
+              <th>Account</th>
+              <th>Duration</th>
+              <th>Detail</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in push_logs %}
+              <tr>
+                <td class="small font-monospace">
+                  {{ log.started_at.strftime('%Y-%m-%d %H:%M:%S') if log.started_at else '—' }}
+                </td>
+                <td class="small text-secondary">{{ log.triggered_by or '—' }}</td>
+                <td>
+                  {% if log.success %}
+                    <span class="badge bg-success-subtle text-success-emphasis">OK</span>
+                  {% else %}
+                    <span class="badge bg-danger-subtle text-danger-emphasis">
+                      {{ log.http_status or 'ERR' }}
+                    </span>
+                  {% endif %}
+                </td>
+                <td class="small">{{ log.account or '—' }}</td>
+                <td class="small">
+                  {{ log.duration_ms ~ ' ms' if log.duration_ms is not none else '—' }}
+                </td>
+                <td class="small">
+                  {% if log.success %}
+                    {{ log.response_message or 'Success' }}
+                  {% else %}
+                    <span class="text-danger">{{ log.error or 'Unknown error' }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-secondary small mb-0">No pushes recorded yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
+  // ---- Copy API key button ----
   (function () {
     var copyBtn = document.getElementById('copyApiKeyBtn');
     var input   = document.getElementById('newApiKey');
@@ -225,5 +316,84 @@
       }, 1600);
     });
   })();
+
+  // ---- Run-now button: submit via fetch, show result inline ----
+  (function () {
+    var form = document.getElementById('runPushForm');
+    var btn  = document.getElementById('runPushBtn');
+    if (!form || !btn) return;
+
+    var label = btn.querySelector('span');
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (btn.disabled) return;
+
+      var original = label ? label.textContent : btn.textContent;
+      btn.disabled = true;
+      if (label) label.textContent = 'Sending…';
+
+      try {
+        var res = await fetch('/admin/run-upstox-push', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Accept': 'application/json' }
+        });
+        var data = await res.json().catch(function () { return {}; });
+
+        if (data.ok) {
+          showDashboardToast(
+            'success',
+            'Upstox push succeeded in ' + (data.duration_ms || 0) + ' ms. Reloading…'
+          );
+          // Reload after a short delay so the new row appears in the table.
+          setTimeout(function () { window.location.reload(); }, 1200);
+          return;
+        }
+
+        var errText = data.error || data.message || ('HTTP ' + res.status);
+        showDashboardToast('danger', 'Push failed: ' + errText);
+      } catch (err) {
+        showDashboardToast('danger', 'Network error while triggering push.');
+      } finally {
+        btn.disabled = false;
+        if (label) label.textContent = original;
+      }
+    });
+  })();
+
+  // ---- Tiny toast helper (Bootstrap) ----
+  function showDashboardToast(type, message) {
+    var container = document.getElementById('dashToastContainer');
+    if (!container || !window.bootstrap) {
+      // Fallback for when Bootstrap JS isn't available
+      alert(message);
+      return;
+    }
+    var el = document.createElement('div');
+    el.className = 'toast align-items-center text-bg-' +
+      (type === 'success' ? 'success' : 'danger') + ' border-0';
+    el.setAttribute('role', 'alert');
+    el.innerHTML =
+      '<div class="d-flex">' +
+        '<div class="toast-body"></div>' +
+        '<button type="button" class="btn-close btn-close-white me-2 m-auto" ' +
+                'data-bs-dismiss="toast" aria-label="Close"></button>' +
+      '</div>';
+    el.querySelector('.toast-body').textContent = message;
+    container.appendChild(el);
+    var t = new bootstrap.Toast(el, { delay: 3500 });
+    t.show();
+    el.addEventListener('hidden.bs.toast', function () { el.remove(); });
+  }
+
+  // Create the toast container if not already present
+  if (!document.getElementById('dashToastContainer')) {
+    var c = document.createElement('div');
+    c.id = 'dashToastContainer';
+    c.className = 'toast-container position-fixed top-0 end-0 p-3';
+    c.style.zIndex = '1100';
+    document.body.appendChild(c);
+  }
 </script>
 {% endblock %}

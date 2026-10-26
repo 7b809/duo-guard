@@ -8,3 +8,5 @@ python-multipart
 itsdangerous
 pyotp
 qrcode[pil]
+apscheduler
+requests

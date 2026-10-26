@@ -7,7 +7,9 @@ from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import JSONResponse
 
 from core.db import totp_entries_collection, users_collection
+from core.masking import mask_account, sanitize_push_result
 from core.security import hash_api_key, make_totp
+from services.upstox_pusher import run_daily_push
 
 router = APIRouter(prefix="/api/v1", tags=["api"])
 
@@ -57,7 +59,7 @@ def _build_entry(entry: dict, now: float) -> dict:
     return {
         "id": str(entry["_id"]),
         "issuer": entry.get("issuer") or "",
-        "account": entry.get("account") or "",
+        "account": mask_account(entry.get("account") or ""),
         "algorithm": entry.get("algorithm", "SHA1"),
         "digits": digits,
         "period": period,
@@ -81,12 +83,14 @@ async def list_entries(
     """List entry metadata (no codes). Useful to discover entry IDs."""
     user = _authenticate(x_api_key, authorization)
     items = []
-    for entry in totp_entries_collection.find({"user_email": user["email"]}).sort("created_at", -1):
+    for entry in totp_entries_collection.find(
+        {"user_email": user["email"]}
+    ).sort("created_at", -1):
         items.append(
             {
                 "id": str(entry["_id"]),
                 "issuer": entry.get("issuer") or "",
-                "account": entry.get("account") or "",
+                "account": mask_account(entry.get("account") or ""),
                 "algorithm": entry.get("algorithm", "SHA1"),
                 "digits": int(entry.get("digits", 6)),
                 "period": int(entry.get("period", 30)),
@@ -110,7 +114,9 @@ async def list_codes(
 
     entries = [
         _build_entry(entry, now)
-        for entry in totp_entries_collection.find({"user_email": user["email"]}).sort("created_at", -1)
+        for entry in totp_entries_collection.find(
+            {"user_email": user["email"]}
+        ).sort("created_at", -1)
     ]
 
     return {
@@ -164,6 +170,45 @@ async def me(
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
     authorization: str | None = Header(default=None),
 ):
-    """Sanity check that the key belongs to a real user."""
+    """Sanity check that the key belongs to a real user.
+
+    Returns the caller's own email — this is the authenticated user
+    verifying their own API key, so it is *not* masked.
+    """
     user = _authenticate(x_api_key, authorization)
     return {"email": user["email"]}
+
+
+@router.post("/upstox/push")
+def push_upstox_manual(
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+    authorization: str | None = Header(default=None),
+):
+    """Manually trigger the Upstox daily push using the current TOTP.
+
+    Same effect as the dashboard's "Run now" button, but for scripts and
+    other automated tools. Requires a valid API key.
+
+    Response body::
+
+        {
+          "ok": true,
+          "success": true,
+          "http_status": 200,
+          "message": "Access token saved successfully.",
+          "error": null,
+          "duration_ms": 431,
+          "account": "***@***.***",
+          "triggered_by": "api",
+          "started_at": "2026-10-27T02:19:06.153000+00:00"
+        }
+    """
+    _authenticate(x_api_key, authorization)
+
+    result = run_daily_push(triggered_by="api")
+    safe = sanitize_push_result(result)
+
+    return JSONResponse(
+        {"ok": result["success"], **safe},
+        status_code=200 if result["success"] else 502,
+    )
