@@ -109,4 +109,4 @@ echo   Press CTRL+C in this window to stop the server.
 echo ================================================
 echo.
 
-python -m uvicorn main:app --host 0.0.0.0 --port 8009
+python -m uvicorn main:app --host 0.0.0.0 --port 8001
