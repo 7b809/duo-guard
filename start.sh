@@ -1,4 +1,18 @@
 #!/bin/bash
+#
+# start.sh
+#
+# DuoGuard launcher.
+#
+# - Creates / activates a virtualenv in ./myenv
+# - Installs requirements.txt
+# - Verifies every critical Python module can actually be imported
+# - Starts uvicorn in the background, writes a PID file, and
+#   tails the startup log if anything goes wrong
+#
+# NOTE: DuoGuard talks to Upstox via plain HTTP (requests), NOT via
+# the upstox-python-sdk. Do not add `upstox_client` to the import
+# checks below — it is not a project dependency.
 
 APP_NAME="duoguard"
 PORT=8003
@@ -9,7 +23,7 @@ VENV_DIR="myenv"
 REQUIREMENTS_FILE="requirements.txt"
 
 echo "=========================================="
-echo "  Market Data Foundation"
+echo "  DuoGuard — TOTP Authenticator"
 echo "=========================================="
 echo
 echo "Starting FastAPI application..."
@@ -119,22 +133,58 @@ else
 fi
 
 # --------------------------------------------------
-# Verify required Upstox package
+# Verify critical imports
 # --------------------------------------------------
+# Matches what requirements.txt installs. Import names differ from
+# pip names in a few cases:
+#     python-dotenv      -> import dotenv
+#     python-multipart   -> import multipart
+#     PyYAML (via ddtrace, etc.) -> not required here
+#
+# If any of these fail, we exit 1 BEFORE spawning uvicorn so the log
+# is clean and the failure is obvious.
 
 echo
-echo "Checking required Python packages..."
+echo "Checking critical imports..."
 
-if ! "$PYTHON" -c "import upstox_client; print('upstox_client: OK')"; then
+"$PYTHON" - <<'PYCHECK'
+import sys
+
+modules = [
+    "fastapi",
+    "uvicorn",
+    "pymongo",
+    "dotenv",
+    "jinja2",
+    "itsdangerous",
+    "pyotp",
+    "qrcode",
+    "apscheduler",
+    "requests",
+    "multipart",
+]
+
+missing = []
+for name in modules:
+    try:
+        __import__(name)
+    except Exception as exc:
+        missing.append((name, f"{type(exc).__name__}: {exc}"))
+
+if missing:
+    print("ERROR: missing or unimportable dependencies:")
+    for name, err in missing:
+        print(f"  - {name}: {err}")
+    sys.exit(1)
+
+print("All critical imports OK.")
+PYCHECK
+
+if [ $? -ne 0 ]; then
     echo
-    echo "ERROR: upstox_client is not installed in the virtual environment."
-    echo
-    echo "Install it using:"
-    echo "  $PYTHON -m pip install upstox-python-sdk"
+    echo "ERROR: Dependency verification failed. See output above."
     exit 1
 fi
-
-echo "upstox_client: OK"
 
 # --------------------------------------------------
 # Start FastAPI
