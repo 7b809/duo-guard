@@ -1,14 +1,14 @@
 <!-- templates/dashboard.html -->
 {% extends "base.html" %}
 
-{% block title %}My codes &mdash; {{ app_name }}{% endblock %}
+{% block title %}My codes — {{ app_name }}{% endblock %}
 
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
   <div>
     <h1 class="h3 fw-bold mb-1">My codes</h1>
     <p class="text-secondary mb-0">
-      Every authenticator you&rsquo;ve added, live and up to date.
+      Every authenticator you’ve added, live and up to date.
       <span class="text-secondary-emphasis">Click any code to reveal it.</span>
     </p>
   </div>
@@ -113,7 +113,7 @@
           <div class="flex-grow-1">
             <h3 class="h6 fw-bold mb-1">Your new API key (shown only once)</h3>
             <p class="small mb-0">
-              Copy it now and store it safely. If you lose it, you&rsquo;ll have to regenerate.
+              Copy it now and store it safely. If you lose it, you’ll have to regenerate.
             </p>
           </div>
         </div>
@@ -165,7 +165,7 @@
       </div>
     {% else %}
       <p class="text-secondary small mb-3">
-        You don&rsquo;t have an API key yet. Generate one to start calling
+        You don’t have an API key yet. Generate one to start calling
         <code>/api/v1/totp/codes</code> from external tools.
       </p>
       <form method="post" action="/api-keys/regenerate">
@@ -186,7 +186,7 @@
 
         <p class="mb-2 text-secondary">Fetch a single code by entry id:</p>
         <pre class="bg-dark text-light rounded-3 p-3 mb-3"><code>curl -H "X-API-Key: {{ api_key_prefix }}…" \
-  {{ request.base_url }}api/v1/totp/&lt;entry_id&gt;/code</code></pre>
+  {{ request.base_url }}api/v1/totp/<entry_id>/code</code></pre>
 
         <p class="mb-2 text-secondary">Fetch the first code for a given issuer:</p>
         <pre class="bg-dark text-light rounded-3 p-3 mb-3"><code>curl -H "X-API-Key: {{ api_key_prefix }}…" \
@@ -212,8 +212,12 @@
         </h2>
         <p class="text-secondary small mb-0">
           A scheduled job generates a fresh Upstox TOTP every day at
-          <strong>04:00 IST</strong> and pushes it to the Upstox dashboard's
-          <code>/api/login</code> endpoint.
+          <strong>04:00 IST</strong>, calls Upstox’s TOTP-login API directly
+          (using your <code>UPSTOX_API_KEY</code> + <code>UPSTOX_PIN</code>),
+          and saves the resulting access token to
+          <code>UPSTOX_APP_V2.app_tokens</code>.
+          It runs again on startup if the token’s <code>updated_at</code> is
+          before <strong>03:00 IST</strong>.
         </p>
       </div>
       <span class="badge bg-success-subtle text-success-emphasis px-3 py-2 rounded-pill">
@@ -231,7 +235,7 @@
         <i class="bi bi-play-circle me-1"></i><span>Run now (manual test)</span>
       </button>
       <span class="text-secondary small ms-2">
-        Triggers the same job immediately &mdash; useful for testing.
+        Triggers the same job immediately — useful for testing.
       </span>
     </form>
 

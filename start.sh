@@ -1,7 +1,7 @@
 #!/bin/bash
 
 APP_NAME="duoguard"
-PORT=8001
+PORT=8003
 
 PID_FILE="${APP_NAME}.pid"
 LOG_DIR="logs"
